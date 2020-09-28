@@ -1,20 +1,52 @@
 const path = require('path');
 const webpack = require('webpack');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+const glob = require('glob');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+
+const setMPA = ()=>{
+  const entry = {};
+  const htmlWebpackPlugins = [];
+
+  const entryFiles = glob.sync(path.join(__dirname,'./src/*/index.js'));
+
+  //console.log(entryFiles);
+  Object.keys(entryFiles)
+    .map((index) => {
+      const entryFile = entryFiles[index];
+      const match = entryFile.match(/src\/(.*)\/index.js/);
+      const pageName = match && match[1];
+      entry[pageName] = entryFile;
+      htmlWebpackPlugins.push(new HtmlWebpackPlugin({
+        template:path.join(__dirname,`src/${pageName}/index.html`),
+        filename:`${pageName}.html`,
+        chunks:[pageName],
+        inject:true,
+        minify:{
+          html5:true,
+          collapseWhitespace:true,
+          preserveLineBreaks:false,
+          minifyCSS:true,
+          minifyJS:true,
+          removeComments:false
+        }
+      }),);
+    })
+
+  return {
+    entry,
+    htmlWebpackPlugins
+  }
+}
+
+
+const {entry, htmlWebpackPlugins } = setMPA();
+
 module.exports = {
-  entry:{
-    index:'./src/index.js',
-    search:'./src/search.js'
-  },
+  entry,
   output:{
-    filename:'[name].js',
+    filename:'[name]_[hash:8].js',
     path:path.resolve(__dirname,'dist')
-  },
-  watch:true,
-  watchOptions:{
-    ignored:/node_modules/,
-    aggregateTimeout:300,
-    poll:1000
   },
   mode:'development',
   module:{
@@ -26,16 +58,26 @@ module.exports = {
       {
         test:/.css$/,
         use:[
-          'style-loader',
+          //MiniCssExtractPlugin.loader,
           'css-loader'
         ]
       },
       {
         test:/.less$/,
         use:[
-          'style-loader',
+          //MiniCssExtractPlugin.loader,
           'css-loader',
-          'less-loader'
+          'less-loader',
+          {
+            loader:'postcss-loader',
+          },
+          {
+            loader:'px2rem-loader',
+            options:{
+              remUnit:75,
+              remPrecision:8
+            }
+          }
         ]
       },
       {
@@ -54,9 +96,10 @@ module.exports = {
   plugins:[
     new webpack.HotModuleReplacementPlugin(),
     new CleanWebpackPlugin(),
-  ],
+  ].concat(htmlWebpackPlugins),
   devServer:{
     contentBase:'./dist',
-    hot:true
-  }
-}
+    hot:true,
+  },
+  devtool:'source-map'
+};

@@ -5,27 +5,24 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const optimizeCssAssetsWebpackPlugin = require('optimize-css-assets-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+//const HtmlWebpackExternalsPlugin = require('html-webpack-externals-plugin');
 
 const setMPA = ()=>{
   const entry = {};
   const htmlWebpackPlugins = [];
-
   const entryFiles = glob.sync(path.join(__dirname,'./src/*/index.js'));
 
   //console.log(entryFiles);
   Object.keys(entryFiles)
     .map((index) => {
       const entryFile = entryFiles[index];
-      console.log(entryFile);
       const match = entryFile.match(/src\/(.*)\/index.js/);
-      console.log(match);
       const pageName = match && match[1];
-      console.log(pageName);
       entry[pageName] = entryFile;
       htmlWebpackPlugins.push(new HtmlWebpackPlugin({
         template:path.join(__dirname,`src/${pageName}/index.html`),
         filename:`${pageName}.html`,
-        chunks:[pageName],
+        chunks:['vendors',pageName],
         inject:true,
         minify:{
           html5:true,
@@ -37,8 +34,7 @@ const setMPA = ()=>{
         }
       }),);
     })
-    //console.log(entry);
-    //console.log(htmlWebpackPlugins);
+
   return {
     entry,
     htmlWebpackPlugins
@@ -114,5 +110,35 @@ module.exports = {
       cssProcessor:require('cssnano')
     }),
     new CleanWebpackPlugin(),
-  ].concat(htmlWebpackPlugins)
+    // new HtmlWebpackExternalsPlugin({
+    //   externals: [
+    //     {
+    //       module: 'react',
+    //       entry: 'https://now8.gtimg.com/now/lib/16.8.6/react.min.js',
+    //       global: 'React',
+    //     },
+    //     {
+    //       module: 'react-dom',
+    //       entry: 'https://now8.gtimg.com/now/lib/16.8.6/react-dom.min.js',
+    //       global: 'ReactDOM',
+    //     },
+    //   ],
+    // })
+  ].concat(htmlWebpackPlugins),
+  optimization:{
+    splitChunks:{
+      minSize:1000,
+      cacheGroups:{
+        commons:{
+          // test:/(react|react-dom)/,
+          // name:'vendors',
+          // chunks:'all'
+          name:'commons',
+          chunks:'all',
+          minChunks:2
+        }
+      }
+    }
+  },
+  //devtool:'source-map',
 };
